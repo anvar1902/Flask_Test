@@ -1,0 +1,40 @@
+/* Стили для бокового меню */
+#sidebarMenu {
+    min-height: 100vh; /* Высота на всю высоту вьюпорта */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Тень для бокового меню */
+    z-index: 1000; /* Устанавливаем z-index, чтобы меню было поверх основного контента */
+}
+
+.nav-item.active {
+  list-style: none; /* Убираем стандартные маркеры */
+  position: relative;
+  padding-left: 0px; /* Отступ для маркера */
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px; /* Ширина маркера */
+  background-color: #0162e8; /* Цвет маркера */
+}
+
+.nav-link {
+    color: #333; /* Цвет текста */
+    stroke: #000000
+}
+
+.nav-link:hover {
+    color: #0162e8; /* Цвет текста для активной ссылки */
+    stroke: #0162e8;
+    fill: #0162e8;
+}
+
+.active {
+    color: #0162e8; /* Цвет текста для активной ссылки */
+    stroke: #0162e8;
+    fill: #0162e8;
+}
+
