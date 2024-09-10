@@ -6,8 +6,18 @@
 	<!-- Content goes here -->
 	<div class="d-flex align-items-start">
 		<div class="nav flex-column nav-pills me-3" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+			<script type="text/javascript">
+				const data = {{ data }};
+				var globalVariable={
+				   x: {{ data }}
+				};
+			</script>
 			<div id="myfirstchart" style="height: 250px;">
-				<script src="{{ url_for('static', filename='js/Moris.js') }}"></script>
+				{% for k, v in data.items() %}
+				    {% block javascript %}
+						<script type="text/javascript" src="{{ url_for('static', path='/js/Moris.js') }}?v={{ time.time() }}"></script>
+					{% endblock %}
+				{% endfor %}
 			</div>
 		</div>
 	</div>

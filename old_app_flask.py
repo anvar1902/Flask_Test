@@ -46,6 +46,7 @@ async def admin_login():
         username = request.form['username']
         password = request.form['password']
         hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        print(hashed_password, password, username)
 
 
         if await users_db.check_user_password(username, hashed_password):

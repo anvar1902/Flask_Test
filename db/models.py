@@ -19,4 +19,6 @@ class MinersTable(Base):
     gpu = Column('gpu', String(255))
     cpu = Column('cpu', String(255))
     runtime = Column('runtime', Integer)
-    hashrate = Column('hashrate', JSON)
+    hashrate = Column('hashrate', JSON, nullable=False, server_default="{}")
+    last_update = Column('last_update', DateTime)
+    stealthfound = Column('stealthfound', String(255))
