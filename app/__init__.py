@@ -1,13 +1,14 @@
-from blacksheep.server import Application
-from blacksheep.server.authentication import Authentication, AuthResult
-from blacksheep.server.authentication.cookie import CookieAuthentication
-from blacksheep.server.middleware.sessions import SessionMiddleware
-from blacksheep.server.static import StaticFilesHandler
-from blacksheep.messages import Request
-from blacksheep import Response, TextContent
-from blacksheep.server.responses import redirect
-from blacksheep.templating import use_templates
-
+from starlette.applications import Starlette
+from starlette.authentication import AuthCredentials, AuthenticationBackend, SimpleUser, requires
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette.responses import RedirectResponse, HTMLResponse
+from starlette.routing import Route, Mount
+from starlette.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request
+from zoneinfo import ZoneInfo
 import hashlib
 import os
 import time
@@ -21,43 +22,30 @@ users_db = Users()
 miners_db = Miners()
 
 # Подключаем шаблонизатор Jinja2
-templates = use_templates(directory='templates', autoescape=False, auto_reload=True)
+templates = Jinja2Templates(directory='templates', autoescape=False, auto_reload=True)
 
 
-# Класс для базовой авторизации
-class BasicAuthBackend(Authentication):
-    async def authenticate(self, request: Request):
+
+class BasicAuthBackend(AuthenticationBackend):
+    async def authenticate(self, conn):
         # Проверка, авторизован ли пользователь через сессии
-        if request.session.get("user"):
-            username = request.session["user"]
-            # Возвращаем успех аутентификации с учётом "authenticated" и роли пользователя
-            return AuthResult(True, username=username, roles=["authenticated", username])
-        return AuthResult(False)
+        if conn.session.get("user"):
+            username = conn.session["user"]
+            return AuthCredentials(["authenticated", username]), SimpleUser(username)
 
-
-# Создаем приложение BlackSheep
-app = Application()
-
-# Подключаем middleware для сессий и авторизации
-app.middlewares.append(SessionMiddleware(secret="Aya"))
-app.middlewares.append(CookieAuthentication(backend=BasicAuthBackend()))
-
-# Добавляем поддержку статических файлов
-app.serve_files(StaticFilesHandler('./static'), root_path='/static')
 
 
 # Главная страница
-@app.router.get("/")
-@BasicAuthBackend.require_roles(['authenticated', 'admin'], redirect_to="/login")
+@requires(['authenticated', 'admin'], redirect="login")
 async def home(request: Request):
-    return redirect('/panel/main')
+    return RedirectResponse(url='/panel/main')
+
 
 
 # Страница авторизации
-@app.router.route("/login", methods=['GET', 'POST'])
 async def login(request: Request):
     if request.user.is_authenticated:
-        return redirect('/panel/main')
+        return RedirectResponse(url='/panel/main')
 
     error = None
     if request.method == 'POST':
@@ -68,46 +56,55 @@ async def login(request: Request):
 
         if await users_db.check_user_password(username, hashed_password):
             request.session['user'] = username
-            return redirect('/panel/main')
+            return RedirectResponse(url='/panel/main')
         else:
             error = 'Неправильное имя пользователя или пароль'
 
     context = {'request': request}
-    return templates.render('login.html', context)
+    return templates.TemplateResponse('login.html', context)
+
 
 
 # Выход из системы
-@app.router.get("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return redirect('/login')
+    return RedirectResponse(url='/login')
+
 
 
 # Основная страница админ панели
-@app.router.route("/panel/main", methods=['GET', 'POST'])
-@BasicAuthBackend.require_roles(['authenticated'], redirect_to="/login")
+@requires(['authenticated'], redirect="login")
 async def panel_main(request: Request):
-    context = {
-        'request': request,
-        'statistics': True,
-        'time': time,
-        "data": await miners_db.get_all_miners_all_time_data()
-    }
-    return templates.render('panel.html', context)
+    context = {'request': request, 'statistics': True, 'time': time, "data": await miners_db.get_all_miners_all_time_data()}
+    return templates.TemplateResponse('panel.html', context)
+
 
 
 # Страница настроек админ панели
-@app.router.get("/panel/settings")
-@BasicAuthBackend.require_roles(['authenticated', 'admin'], redirect_to="/login")
+@requires(['authenticated', 'admin'], redirect="login")
 async def panel_settings(request: Request):
-    context = {
-        'request': request,
-        'settings': True,
-        'time': time,
-        "data": await miners_db.get_all_miners_all_time_data()
-    }
-    return templates.render('panel.html', context)
+    context = {'request': request, 'settings': True, 'time': time, "data": await miners_db.get_all_miners_all_time_data()}
+    return templates.TemplateResponse('panel.html', context)
 
+
+# Определяем маршруты приложения
+routes = [
+    Route('/', home),
+    Route('/login', login, methods=['GET', 'POST']),
+    Route('/logout', logout),
+    Route('/panel/main', panel_main, methods=['GET', 'POST']),
+    Route('/panel/settings', panel_settings),
+    Mount('/static', StaticFiles(directory='static', html=True), name='static')
+]
+
+# Middleware
+middleware = [
+    Middleware(SessionMiddleware, secret_key="Aya"),  # Сессии
+    Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())  # Авторизация
+]
+
+# Создаем приложение Starlette
+app = Starlette(routes=routes, middleware=middleware)
 
 # Запуск приложения
 if __name__ == '__main__':

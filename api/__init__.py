@@ -1,6 +1,13 @@
-from blacksheep.server.application import Application
-from blacksheep.server.responses import json, file, redirect
-from blacksheep.server.routing import Router
+from starlette.applications import Starlette
+from starlette.authentication import AuthCredentials, AuthenticationBackend, SimpleUser, requires
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette.responses import RedirectResponse, HTMLResponse
+from starlette.routing import Route, Mount
+from starlette.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request
 from zoneinfo import ZoneInfo
 import hashlib
 import os
@@ -9,8 +16,8 @@ import asyncio
 import datetime
 
 from db.CRUD import Users, Miners
-import api.Receive as Receive
-import api.Send as Send
+from api.Receive import *
+from api.Send import *
 
 
 
@@ -18,14 +25,14 @@ import api.Send as Send
 users_db = Users()
 miners_db = Miners()
 
-router = Router(prefix="/api", sub_routers=[Receive.router, Send.router])
 
 
+routes = [
+    Route('/endpoint', miners_endpoint, methods=['GET', 'POST']),
+    Route('/get_data', get_miners_data, methods=['GET', 'POST'])
+]
 
-
-
-app = Application(router=router)
-app.base_path = "/api"
+app = Starlette(routes=routes)
 
 if __name__ == '__main__':
     import uvicorn

